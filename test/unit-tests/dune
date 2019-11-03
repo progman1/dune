@@ -1,0 +1,9 @@
+(executable
+ (name sexp_tests)
+ (modules sexp_tests)
+ (libraries stdune dune_lang jbuild_support))
+
+(alias
+ (name runtest)
+ (action
+  (run ./sexp_tests.exe)))

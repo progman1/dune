@@ -1,0 +1,4 @@
+(library
+ (name dune_manager)
+ (preprocess future_syntax)
+ (libraries threads.posix dune_memory stdune))
