@@ -52,6 +52,8 @@ type t =
   { name : Package.Name.t
   ; entries : Entry.t list
   ; version : string option
+  ; share : Path.t option
+  ; lib : Path.t option
   ; dir : Path.t
   }
 

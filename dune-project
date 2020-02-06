@@ -1,4 +1,4 @@
-(lang dune 2.0)
+(lang dune 2.2)
 (name dune)
 
 (generate_opam_files true)
@@ -114,3 +114,9 @@ execution of the action.
  (description "\
 dune-glob provides a parser and interpreter for globs as \
 understood by dune language."))
+
+(package
+ (name dune-sites-locations)
+ (synopsis "Embed locations informations inside executable and libraries")
+ (description "\
+"))

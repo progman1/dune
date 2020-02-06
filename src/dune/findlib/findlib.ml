@@ -509,6 +509,8 @@ module Root_package = struct
           ]
       ; version = None
       ; dir = Path.root
+      ; share = None
+      ; lib = None
       }
 end
 

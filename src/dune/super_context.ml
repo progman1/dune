@@ -55,6 +55,8 @@ type t =
 
 let context t = t.context
 
+let context_env t = t.env_context.context_env
+
 let stanzas t = t.stanzas
 
 let stanzas_in t ~dir = Path.Build.Map.find t.stanzas_per_dir dir
@@ -494,11 +496,50 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
       ~context ~lib_artifacts:artifacts.public_libs
       ~bin_artifacts_host:artifacts_host.bin
   in
+  let dune_dir_locations_var : Stdune.Env.Var.t = "DUNE_DIR_LOCATIONS" in
+  let env_dune_dir_locations =
+    let install_dir = Config.local_install_dir ~context:context.name in
+    let install_dir = Path.build install_dir in
+    let v = Option.value (Stdune.Env.get context.env dune_dir_locations_var)
+                ~default:"" in
+    let v = Package.Name.Map.foldi ~init:v packages
+              ~f:(fun package_name package init ->
+                let sections =
+                  Package.Name.Map.fold ~init:Install.Section.Set.empty
+                    package.Package.sites_locations
+                    ~f:(fun section acc -> Install.Section.Set.add acc section )
+                in
+                let paths =
+                  Install.Section.Paths.make ~package:package_name ~destdir:install_dir ()
+                in
+                Install.Section.Set.fold sections ~init
+                  ~f:(fun section acc ->
+                    sprintf "%s%c%s%c%s%s"
+                      (Package.Name.to_string package_name)
+                      Stdune.Bin.path_sep
+                      (Section.to_string section)
+                      Stdune.Bin.path_sep
+                      (Path.to_absolute_filename (Install.Section.Paths.get paths section))
+                      (if String.is_empty acc then acc
+                       else sprintf "%c%s" Stdune.Bin.path_sep acc)
+                  )
+              )
+    in
+    v
+  in
+  let context_env =
+    if String.is_empty env_dune_dir_locations
+    then context.env
+    else
+      Stdune.Env.add context.env
+        ~var:dune_dir_locations_var
+        ~value:env_dune_dir_locations
+  in
   let env_context =
     { Env_context.env
     ; profile = context.profile
     ; scopes
-    ; context_env = context.env
+    ; context_env
     ; default_env
     ; stanzas_per_dir
     ; host = Option.map host ~f:(fun x -> x.env_context)
