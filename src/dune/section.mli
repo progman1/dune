@@ -35,3 +35,20 @@ val to_dyn : t -> Dyn.t
 (** [true] iff the executable bit should be set for files installed in this
     location. *)
 val should_set_executable_bit : t -> bool
+
+module Site : sig
+  type t
+
+  val of_string : string -> t
+
+  val parse_string_exn : Loc.t * string -> t
+
+  include Interned.S with type t := t
+
+  include Dune_lang.Conv.S with type t := t
+
+  module Infix : Comparator.OPS with type t = t
+
+  val to_dyn : t -> Dyn.t
+
+end

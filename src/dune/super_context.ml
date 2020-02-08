@@ -84,31 +84,31 @@ let host t = Option.value t.host ~default:t
 let get_site_of_packages t ~pkg ~site =
   match Package.Name.Map.find t.packages pkg with
   | Some p -> begin
-      match Package.Name.Map.find p.sites_locations site with
+      match Section.Site.Map.find p.sites site with
       | Some section -> section
       | None -> User_error.raise
                   [ Pp.textf "Package %s doesn't define a site %s"
                       (Package.Name.to_string pkg)
-                      (Package.Name.to_string site)
+                      (Section.Site.to_string site)
                   ]
     end
   | None ->
     match Findlib.find_root_package t.context.findlib
             ~root_name:(Lib_name.of_string_exn ~loc:None (Package.Name.to_string pkg)) with
     | Ok (Dune p) -> begin
-        match Package.Name.Map.find p.sites2 site with
+        match Section.Site.Map.find p.sites site with
         | Some section -> section
         | None -> User_error.raise
                     [ Pp.textf "Package %s doesn't define a site %s"
                         (Package.Name.to_string pkg)
-                        (Package.Name.to_string site)
+                        (Section.Site.to_string site)
                     ]
       end
     | Ok (Findlib _) ->
       User_error.raise
         [ Pp.textf "The package %s can't define a site %s because it is not a dune package"
             (Package.Name.to_string pkg)
-            (Package.Name.to_string site)
+            (Section.Site.to_string site)
         ]
     | Error Not_found ->
       User_error.raise
@@ -542,8 +542,8 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
     let v = Package.Name.Map.foldi ~init:v packages
               ~f:(fun package_name package init ->
                 let sections =
-                  Package.Name.Map.fold ~init:Install.Section.Set.empty
-                    package.Package.sites_locations
+                  Section.Site.Map.fold ~init:Install.Section.Set.empty
+                    package.Package.sites
                     ~f:(fun section acc -> Install.Section.Set.add acc section )
                 in
                 let paths =

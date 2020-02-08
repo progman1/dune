@@ -509,8 +509,8 @@ module Root_package = struct
           ]
       ; version = None
       ; dir = Path.root
-      ; sites = Section.Map.empty
-      ; sites2 = Opam_package.Name.Map.empty
+      ; sections = Section.Map.empty
+      ; sites = Section.Site.Map.empty
       }
 end
 

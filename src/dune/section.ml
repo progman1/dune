@@ -140,3 +140,57 @@ let should_set_executable_bit = function
   | Sbin
   | Stublibs ->
     true
+
+module Site = struct
+  module T =
+    Interned.Make
+      (struct
+        let initial_size = 16
+
+        let resize_policy = Interned.Conservative
+
+        let order = Interned.Natural
+      end)
+      ()
+
+  include T
+
+  let of_string_opt s =
+    (* TODO verify no dots or spaces *)
+    if s = "" then
+      None
+    else
+      Some (make s)
+
+  let of_string pkg =
+    match of_string_opt pkg with
+    | Some p -> p
+    | None ->
+      Code_error.raise "Invalid package name"
+        [ ("pkg", Dyn.Encoder.string pkg) ]
+
+  let invalid_package_name (loc, s) =
+    User_error.make ~loc [ Pp.textf "%S is an invalid package name" s ]
+
+  let of_string_user_error (loc, s) =
+    match of_string_opt s with
+    | Some s -> Ok s
+    | None -> Error (invalid_package_name (loc, s))
+
+  let parse_string_exn s =
+    match of_string_user_error s with
+    | Ok s -> s
+    | Error err -> raise (User_error.E err)
+
+  let pp fmt t = Format.pp_print_string fmt (to_string t)
+
+  let decode =
+    let open Dune_lang.Decoder in
+    map_validate (located string) ~f:of_string_user_error
+
+  let encode t = Dune_lang.Encoder.(string (to_string t))
+
+  let to_dyn t = Dyn.Encoder.string (to_string t)
+
+  module Infix = Comparator.Operators (T)
+end
