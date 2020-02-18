@@ -46,6 +46,10 @@ let copy_interface ~sctx ~dir ~obj_dir m =
          ~src:(Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi))
          ~dst:(Obj_dir.Module.cm_public_file_unsafe obj_dir m ~kind:Cmi))
 
+(* cmx is effectively opaque when in subdeps mode, which ensures clients still only
+   dependent on the cmi rather than cmx directly. *)
+let subdeps = try ignore@@ Sys.getenv "DUNE_SUBDEPS"; true with Not_found-> false
+
 let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   let sctx = CC.super_context cctx in
   let dir = CC.dir cctx in
@@ -110,7 +114,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
       other_targets
   in
   let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
-  let opaque = CC.opaque cctx in
+  let opaque = CC.opaque cctx || subdeps in
   let other_cm_files =
     Build.dyn_paths_unit
       (other_cm_files ~opaque ~cm_kind ~dep_graph ~obj_dir m)
@@ -122,6 +126,14 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
     | Cmo ->
       let fn = Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~ml_kind) in
       (fn :: other_targets, A "-bin-annot")
+  in
+  let other_targets =
+    match cm_kind with
+    | Cmx
+    | Cmo ->
+      let fn = Option.value_exn (Obj_dir.Module.cmd_file obj_dir m cm_kind) in
+      fn :: other_targets
+    | _ -> other_targets
   in
   let opaque_arg =
     let intf_only = cm_kind = Cmi && not (Module.has m ~ml_kind:Impl) in

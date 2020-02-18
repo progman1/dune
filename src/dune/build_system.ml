@@ -1390,6 +1390,22 @@ end = struct
     Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred
     |> (Digest.generic : Dep.Trace.t -> _)
 
+  (* HACK ALERT! *)
+  let subdeps = try ignore@@ Sys.getenv "DUNE_SUBDEPS"; true with Not_found-> false
+  let _keep_artefacts targets=
+    let head_target = List.hd targets in
+    let is_cu t=
+      let t = Stdune.Path.Local_gen.to_string t in
+      Filename.check_suffix t "cmo" || Filename.check_suffix t "cmx"
+    in
+    is_cu head_target || (match List.nth targets 1 with None->false | Some t-> is_cu t)
+  let keep_artefacts targets=
+    let is_cu t=
+      let t = Stdune.Path.Local_gen.to_string t in
+      Filename.check_suffix t "cmo" || Filename.check_suffix t "cmx"
+    in
+    List.exists is_cu targets
+
   let execute_rule_impl rule =
     let t = t () in
     let { Internal_rule.dir
@@ -1411,6 +1427,10 @@ end = struct
     Fs.mkdir_p dir;
     let targets_as_list = Path.Build.Set.to_list targets in
     let head_target = List.hd targets_as_list in
+Printf.printf "TARGETS ";
+List.iter (fun tg-> Printf.printf " %s" (Stdune.Path.Local_gen.to_string tg)) targets_as_list;
+Printf.printf "\n";
+
     let env = Internal_rule.effective_env rule in
     let rule_loc = rule_loc ~info ~dir in
     let is_action_dynamic = Action.is_dynamic action in
@@ -1489,9 +1509,15 @@ end = struct
     in
     let* () =
       if rule_need_rerun then (
+        (* HACK! need .cmd and cu around so compiler can retain decision code *)
+        if not@@ (subdeps && keep_artefacts targets_as_list) then
         List.iter targets_as_list ~f:(fun target ->
             Cached_digest.remove (Path.build target);
-            Path.unlink_no_err (Path.build target));
+            Path.unlink_no_err (Path.build target))
+else(
+print_endline@@"NOT REMOVING ARTEFACTS FOR "^Filename.chop_extension (Stdune.Path.Local_gen.to_string head_target);
+ignore@@ Sys.command "ls -ltr ~/experiments/ocaml+subdeps/_build/default/.t3.eobjs/byte/";
+);
         let from_dune_memory =
           match (do_not_memoize, t.cache) with
           | true, _
